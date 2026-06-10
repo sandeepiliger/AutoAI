@@ -76,6 +76,34 @@ public partial class OrdersView : UserControl
         }
     }
 
+    private void OrdersGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        => OpenSelectedOrderDetails();
+
+    private void OrdersContextViewDetails_Click(object sender, RoutedEventArgs e)
+        => OpenSelectedOrderDetails();
+
+    private void OrdersContextExport_Click(object sender, RoutedEventArgs e)
+    {
+        OrdersStatusText.Text = $"Exported {_orders.Count} orders to CSV (simulated)";
+    }
+
+    private void OpenSelectedOrderDetails()
+    {
+        if (OrdersGrid.SelectedItem is not Order selected)
+        {
+            OrdersStatusText.Text = "Select an order to view details";
+            return;
+        }
+
+        // Non-modal child window, so the main window stays interactive
+        // (the agent switches between windows with switch_to_window).
+        var details = new Dialogs.OrderDetailsWindow(selected)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        details.Show();
+    }
+
     private void OrdersFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         _ordersView?.Refresh();

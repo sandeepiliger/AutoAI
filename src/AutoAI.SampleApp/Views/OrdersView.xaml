@@ -48,7 +48,18 @@
                           IsReadOnly="True"
                           CanUserAddRows="False"
                           SelectionMode="Single"
-                          HeadersVisibility="Column">
+                          HeadersVisibility="Column"
+                          MouseDoubleClick="OrdersGrid_MouseDoubleClick">
+                    <DataGrid.ContextMenu>
+                        <ContextMenu AutomationProperties.AutomationId="OrdersContextMenu">
+                            <MenuItem Header="View Details"
+                                      AutomationProperties.AutomationId="OrdersContextViewDetailsMenuItem"
+                                      Click="OrdersContextViewDetails_Click" />
+                            <MenuItem Header="Export to CSV"
+                                      AutomationProperties.AutomationId="OrdersContextExportMenuItem"
+                                      Click="OrdersContextExport_Click" />
+                        </ContextMenu>
+                    </DataGrid.ContextMenu>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Order Id" Binding="{Binding OrderId}" Width="100" />
                         <DataGridTextColumn Header="Customer" Binding="{Binding Customer}" Width="200" />

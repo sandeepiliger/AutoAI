@@ -37,7 +37,7 @@ in the chat.
 | Project | What it is |
 |---|---|
 | `src/AutoAI.SampleApp` | An enterprise-style WPF app to test against: menu bar, status bar, five screens (Home, Orders, Customers, Order Entry, Reports), modal dialogs and message boxes, and the full common control set — see the coverage table below. Orders loads 10 rows after a simulated 1.5 s delay. |
-| `src/AutoAI.Automation` | FlaUI wrapper exposing 20 automation tools covering every common WPF control type, with modal-dialog-aware element search. |
+| `src/AutoAI.Automation` | FlaUI wrapper exposing 29 automation tools covering every common WPF control type, plus context menus, keyboard shortcuts, multi-window apps, state waits and text assertions — with modal-dialog- and popup-aware element search. |
 | `src/AutoAI.Agent` | Azure OpenAI client (API key + endpoint): system prompt, conversation history, tool definitions and the tool-call → execute → respond loop. |
 | `src/AutoAI.Copilot` | The WPF chat window you talk to. Shows agent replies and a live log of every tool call. |
 
@@ -112,6 +112,9 @@ More things to try:
 - `In Reports, select Sales > Q1 Sales, enable detailed breakdown, generate the report and wait until it's ready.`
 - `Open Tools > Settings, switch the theme to Dark and save; verify the status bar confirms it.`
 - `Open Help > About and read me the dialog text, then close it.`
+- `Right-click the orders grid and choose Export to CSV; verify the status text confirms the export.`
+- `Select the second order row, double-click it, switch to the Order Details window, verify the customer name, then close it.`
+- `Wait until the Load Orders button is enabled again, then verify the status text contains "Loaded".`
 - `Take a screenshot of the app.`
 
 ## WPF control coverage
@@ -136,8 +139,12 @@ typically has, each wired to a matching automation tool:
 | Menu / MenuItem | File, View, Tools, Help | `select_menu_item` |
 | Expander | Reports options | `click_element` (ExpandCollapse) |
 | ProgressBar | Reports generation | `get_element_state` (rangeValue) |
-| StatusBar | main window | `get_element_state` |
+| StatusBar | main window | `get_element_state`, `verify_element_text` |
 | Modal Window / MessageBox | Settings, About, delete confirmation | found automatically by all tools; see `modalWindows` in `get_ui_tree` |
+| ContextMenu (right-click) | Orders grid (View Details, Export to CSV) | `right_click_element`, then `click_element`; menu appears under `popup` in `get_ui_tree` |
+| Non-modal child windows | Order Details (double-click a row) | `double_click_element`, `list_windows`, `switch_to_window` |
+| Keyboard shortcuts | everywhere | `send_keys` (`CTRL+S`, `ENTER`, `F5`, …) |
+| Async loads / state changes | Orders loading, report progress | `wait_for_element_state` (enabled/disabled/visible/hidden/text) |
 
 ## Pointing it at your own WPF application
 
@@ -152,17 +159,25 @@ typically has, each wired to a matching automation tool:
 
 ## The automation tools the agent can call
 
-`launch_app`, `attach_app`, `close_app`, `get_ui_tree`, `click_element`, `set_text`,
-`select_combo_item`, `set_checkbox`, `select_radio_button`, `select_list_item`,
-`select_tree_item`, `select_menu_item`, `set_slider_value`, `select_tab`,
-`select_grid_row`, `read_grid`, `verify_grid_row_count`, `get_element_state`,
-`wait_for_element`, `take_screenshot` — defined in
-`src/AutoAI.Automation/Tools/ToolCatalog.cs`. Add your own tool by appending a
-`ToolSpec` there and a handler in `AutomationToolExecutor.ExecuteCore`.
+**Apps & windows**: `launch_app`, `attach_app`, `close_app`, `list_windows`,
+`switch_to_window`
+**Discovery**: `get_ui_tree`, `get_element_state`, `take_screenshot`
+**Interaction**: `click_element`, `double_click_element`, `right_click_element`,
+`set_text`, `send_keys`, `focus_element`, `scroll_element`
+**Control-specific**: `select_combo_item`, `set_checkbox`, `select_radio_button`,
+`select_list_item`, `select_tree_item`, `select_menu_item`, `set_slider_value`,
+`select_tab`, `select_grid_row`
+**Synchronization**: `wait_for_element`, `wait_for_element_state`
+**Assertions**: `read_grid`, `verify_grid_row_count`, `verify_element_text`
 
-Element search automatically covers **open modal dialogs and message boxes** (they are
-separate top-level windows in UI Automation, searched before the main window), so the
-agent can fill dialogs and confirm message boxes with the same tools.
+All defined in `src/AutoAI.Automation/Tools/ToolCatalog.cs`. Add your own tool by
+appending a `ToolSpec` there and a handler in `AutomationToolExecutor.ExecuteCore`.
+
+Element search automatically covers **open modal dialogs, message boxes and popups**
+(context menus, dropdowns) — they are separate top-level windows in UI Automation,
+searched before the active window — so the agent can fill dialogs, confirm message
+boxes and click context-menu items with the same tools. When the app opens non-modal
+child windows, `switch_to_window` retargets every tool at that window.
 
 ## Troubleshooting
 

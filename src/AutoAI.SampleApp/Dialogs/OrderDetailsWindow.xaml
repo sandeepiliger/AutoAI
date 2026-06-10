@@ -1,0 +1,25 @@
+<Window x:Class="AutoAI.SampleApp.Dialogs.OrderDetailsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        AutomationProperties.AutomationId="OrderDetailsWindow"
+        Height="260" Width="360"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+    <StackPanel Margin="16">
+        <TextBlock Text="Order Details" FontSize="18" FontWeight="Bold" Margin="0,0,0,12" />
+        <TextBlock x:Name="OrderDetailIdText"
+                   AutomationProperties.AutomationId="OrderDetailIdText" Margin="0,2" />
+        <TextBlock x:Name="OrderDetailCustomerText"
+                   AutomationProperties.AutomationId="OrderDetailCustomerText" Margin="0,2" />
+        <TextBlock x:Name="OrderDetailAmountText"
+                   AutomationProperties.AutomationId="OrderDetailAmountText" Margin="0,2" />
+        <TextBlock x:Name="OrderDetailStatusText"
+                   AutomationProperties.AutomationId="OrderDetailStatusText" Margin="0,2" />
+        <Button x:Name="OrderDetailCloseButton"
+                AutomationProperties.AutomationId="OrderDetailCloseButton"
+                Content="Close" Width="80" Height="28" Margin="0,16,0,0"
+                HorizontalAlignment="Right" IsCancel="True"
+                Click="OrderDetailCloseButton_Click" />
+    </StackPanel>
+</Window>

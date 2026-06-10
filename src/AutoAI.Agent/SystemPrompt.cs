@@ -28,12 +28,21 @@ public static class SystemPrompt
            tabs, and select_grid_row to select a grid row before row-level actions.
         6. Modal dialogs and message boxes are searched automatically and appear in get_ui_tree
            under 'modalWindows'. Handle them before continuing - e.g. click_element with
-           name='Yes' or name='OK' on a confirmation box.
-        7. Grid checks: use read_grid to inspect cell values and verify_grid_row_count for row
-           count assertions. Check boxes, radio buttons, sliders and progress bars report their
-           state via get_element_state (isChecked, rangeValue).
-        8. Report every verification explicitly as PASSED or FAILED, including expected vs actual
-           values. If a step fails, stop and explain what you observed instead of guessing.
-        9. Keep answers short and structured: what you did, what you verified, the outcome.
+           name='Yes' or name='OK' on a confirmation box. Context menus: right_click_element,
+           then the menu appears under 'popup' in get_ui_tree; click its items by name.
+        7. If the app opens additional non-modal windows (detail views, tool windows), use
+           list_windows and switch_to_window to target them, and switch back to the main
+           window afterwards.
+        8. Synchronization: wait_for_element_state (enabled/disabled/visible/hidden/
+           text_equals/text_contains) is the preferred way to wait for loads to finish or
+           status text to change. Use send_keys for keyboard shortcuts like CTRL+S.
+        9. Grid checks: use read_grid to inspect cell values and verify_grid_row_count for row
+           count assertions. Use verify_element_text for label/status assertions. Check boxes,
+           radio buttons, sliders and progress bars report their state via get_element_state
+           (isChecked, rangeValue).
+        10. Report every verification explicitly as PASSED or FAILED, including expected vs
+            actual values. If a step fails, stop and explain what you observed instead of
+            guessing.
+        11. Keep answers short and structured: what you did, what you verified, the outcome.
         """;
 }

@@ -212,6 +212,108 @@ public static class ToolCatalog
             """),
 
         new ToolSpec(
+            "double_click_element",
+            "Double-click an element (e.g. a grid row to open its detail view). " +
+            "Provide at least one of automationId, name or controlType.",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the element (preferred)."},
+              "name":{"type":"string","description":"Visible name of the element."},
+              "controlType":{"type":"string","description":"UIA control type, e.g. DataItem."}
+            },"required":[]}
+            """),
+
+        new ToolSpec(
+            "right_click_element",
+            "Right-click an element to open its context menu. The opened menu appears under " +
+            "'popup' in get_ui_tree and its items can be clicked with click_element by name.",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the element (preferred)."},
+              "name":{"type":"string","description":"Visible name of the element."},
+              "controlType":{"type":"string","description":"UIA control type."}
+            },"required":[]}
+            """),
+
+        new ToolSpec(
+            "send_keys",
+            "Send a keyboard shortcut or special key to the application, e.g. 'CTRL+S', " +
+            "'ALT+F4', 'ENTER', 'TAB', 'ESCAPE', 'F5', 'CTRL+SHIFT+P', 'DELETE', 'DOWN'. " +
+            "Optionally focus an element first. For typing text into a field use set_text instead.",
+            """
+            {"type":"object","properties":{
+              "keys":{"type":"string","description":"Keys joined with '+', e.g. 'CTRL+S' or a single key like 'ENTER'."},
+              "automationId":{"type":"string","description":"Optional element to focus before sending the keys."}
+            },"required":["keys"]}
+            """),
+
+        new ToolSpec(
+            "focus_element",
+            "Set keyboard focus to an element.",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the element (preferred)."},
+              "name":{"type":"string","description":"Visible name of the element."}
+            },"required":[]}
+            """),
+
+        new ToolSpec(
+            "scroll_element",
+            "Scroll a scrollable container (grid, list, panel) in a direction. Uses the UIA " +
+            "Scroll pattern when available, otherwise the mouse wheel over the element.",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the scrollable element."},
+              "direction":{"type":"string","enum":["up","down","left","right"],"description":"Scroll direction."},
+              "amount":{"type":"integer","description":"Number of scroll increments, default 3."}
+            },"required":["automationId","direction"]}
+            """),
+
+        new ToolSpec(
+            "wait_for_element_state",
+            "Wait until an element reaches a state: 'enabled', 'disabled', 'visible', 'hidden', " +
+            "'text_equals' or 'text_contains' (the last two compare against 'text'). Use this to " +
+            "wait for loads to finish, buttons to re-enable, or status text to change.",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the element (preferred)."},
+              "name":{"type":"string","description":"Visible name of the element."},
+              "condition":{"type":"string","enum":["enabled","disabled","visible","hidden","text_equals","text_contains"],"description":"The state to wait for."},
+              "text":{"type":"string","description":"Expected text for text_equals / text_contains."},
+              "timeoutMs":{"type":"integer","description":"Maximum wait in milliseconds, default 10000."}
+            },"required":["condition"]}
+            """),
+
+        new ToolSpec(
+            "verify_element_text",
+            "Assert the text of an element (label, status, text box). Returns passed=true/false " +
+            "with expected and actual text.",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the element (preferred)."},
+              "name":{"type":"string","description":"Visible name of the element."},
+              "expectedText":{"type":"string","description":"The expected text."},
+              "comparison":{"type":"string","enum":["equals","contains"],"description":"Comparison mode, default 'equals'. Case-insensitive."}
+            },"required":["expectedText"]}
+            """),
+
+        new ToolSpec(
+            "list_windows",
+            "List all top-level windows of the application under test (useful when the app " +
+            "opens additional non-modal windows).",
+            """{"type":"object","properties":{},"required":[]}"""),
+
+        new ToolSpec(
+            "switch_to_window",
+            "Make another top-level window of the application the active target for all tools " +
+            "(matched by title substring). Switch back by passing the main window's title.",
+            """
+            {"type":"object","properties":{
+              "title":{"type":"string","description":"Part of the window title to switch to (case-insensitive)."}
+            },"required":["title"]}
+            """),
+
+        new ToolSpec(
             "take_screenshot",
             "Save a PNG screenshot of the main window (or the full screen) and return the file path.",
             """

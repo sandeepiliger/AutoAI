@@ -24,6 +24,13 @@ public sealed class UiTreeSerializer(int maxDepth = 12, int maxNodes = 400)
             ["tree"] = BuildNode(window, depth: 0),
         };
 
+        // Open popups (context menus, dropdowns) are separate top-level windows.
+        var popup = Safe(() => window.Popup);
+        if (popup is not null)
+        {
+            root["popup"] = new JsonObject { ["tree"] = BuildNode(popup, depth: 0) };
+        }
+
         // Modal dialogs (including message boxes) are separate top-level windows.
         var modalWindows = new JsonArray();
         foreach (var modal in Safe(() => window.ModalWindows) ?? [])

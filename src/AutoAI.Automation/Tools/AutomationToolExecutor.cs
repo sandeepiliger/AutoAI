@@ -5,6 +5,7 @@ using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Capturing;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.Input;
+using FlaUI.Core.Tools;
 using FlaUI.Core.WindowsAPI;
 
 namespace AutoAI.Automation.Tools;
@@ -64,6 +65,15 @@ public sealed class AutomationToolExecutor(string defaultAppPath) : IToolExecuto
             "select_menu_item" => SelectMenuItem(args),
             "set_slider_value" => SetSliderValue(args),
             "select_grid_row" => SelectGridRow(args),
+            "double_click_element" => DoubleClickElement(args),
+            "right_click_element" => RightClickElement(args),
+            "send_keys" => SendKeys(args),
+            "focus_element" => FocusElement(args),
+            "scroll_element" => ScrollElement(args),
+            "wait_for_element_state" => WaitForElementState(args),
+            "verify_element_text" => VerifyElementText(args),
+            "list_windows" => ListWindows(),
+            "switch_to_window" => SwitchToWindow(args),
             "get_element_state" => GetElementState(args),
             "wait_for_element" => WaitForElement(args),
             "take_screenshot" => TakeScreenshot(args),
@@ -124,7 +134,7 @@ public sealed class AutomationToolExecutor(string defaultAppPath) : IToolExecuto
     {
         var maxDepth = GetInt(args, "maxDepth") ?? 12;
         var serializer = new UiTreeSerializer(maxDepth);
-        return serializer.Serialize(_session.GetMainWindow());
+        return serializer.Serialize(_session.GetActiveWindow());
     }
 
     private string ClickElement(JsonElement args)
@@ -406,6 +416,197 @@ public sealed class AutomationToolExecutor(string defaultAppPath) : IToolExecuto
         return Json(new { passed = actualCount == expectedCount, expectedCount, actualCount });
     }
 
+    private string DoubleClickElement(JsonElement args)
+    {
+        var element = Find(args);
+        element.DoubleClick();
+        Wait.UntilInputIsProcessed();
+        return Json(new
+        {
+            success = true,
+            doubleClicked = new { automationId = element.AutomationId, name = element.Name },
+        });
+    }
+
+    private string RightClickElement(JsonElement args)
+    {
+        var element = Find(args);
+        element.RightClick();
+        Wait.UntilInputIsProcessed();
+        return Json(new
+        {
+            success = true,
+            rightClicked = new { automationId = element.AutomationId, name = element.Name },
+            hint = "Call get_ui_tree to see the opened context menu under 'popup'.",
+        });
+    }
+
+    private string SendKeys(JsonElement args)
+    {
+        var keys = GetString(args, "keys")
+            ?? throw new ArgumentException("keys is required.");
+        var automationId = GetString(args, "automationId");
+
+        if (automationId is not null)
+        {
+            Finder.Find(automationId, null, null).Focus();
+        }
+
+        var virtualKeys = keys
+            .Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(ParseKey)
+            .ToArray();
+        if (virtualKeys.Length == 0)
+        {
+            throw new ArgumentException("keys must contain at least one key.");
+        }
+
+        if (virtualKeys.Length == 1)
+        {
+            Keyboard.Type(virtualKeys[0]);
+        }
+        else
+        {
+            Keyboard.TypeSimultaneously(virtualKeys);
+        }
+        Wait.UntilInputIsProcessed();
+        return Json(new { success = true, sent = keys });
+    }
+
+    private string FocusElement(JsonElement args)
+    {
+        var element = Find(args);
+        element.Focus();
+        return Json(new { success = true, focused = new { automationId = element.AutomationId, name = element.Name } });
+    }
+
+    private string ScrollElement(JsonElement args)
+    {
+        var automationId = GetString(args, "automationId")
+            ?? throw new ArgumentException("automationId is required.");
+        var direction = (GetString(args, "direction") ?? "down").ToLowerInvariant();
+        var amount = Math.Clamp(GetInt(args, "amount") ?? 3, 1, 50);
+        if (direction is not ("up" or "down" or "left" or "right"))
+        {
+            throw new ArgumentException("direction must be one of: up, down, left, right.");
+        }
+
+        var element = Finder.Find(automationId, null, null);
+        var scroll = element.Patterns.Scroll.PatternOrDefault;
+        if (scroll is not null)
+        {
+            var horizontal = direction switch
+            {
+                "left" => ScrollAmount.SmallDecrement,
+                "right" => ScrollAmount.SmallIncrement,
+                _ => ScrollAmount.NoAmount,
+            };
+            var vertical = direction switch
+            {
+                "up" => ScrollAmount.SmallDecrement,
+                "down" => ScrollAmount.SmallIncrement,
+                _ => ScrollAmount.NoAmount,
+            };
+            for (var i = 0; i < amount; i++)
+            {
+                scroll.Scroll(horizontal, vertical);
+            }
+        }
+        else
+        {
+            Mouse.MoveTo(element.GetClickablePoint());
+            if (direction is "up" or "down")
+            {
+                Mouse.Scroll(direction == "up" ? amount : -amount);
+            }
+            else
+            {
+                Mouse.HorizontalScroll(direction == "right" ? amount : -amount);
+            }
+        }
+        return Json(new { success = true, scrolled = direction, amount });
+    }
+
+    private string WaitForElementState(JsonElement args)
+    {
+        var (automationId, name, _) = GetCriteria(args);
+        var condition = GetString(args, "condition")
+            ?? throw new ArgumentException("condition is required.");
+        var expectedText = GetString(args, "text");
+        var timeoutMs = GetInt(args, "timeoutMs") ?? 10000;
+        if (condition is "text_equals" or "text_contains" && expectedText is null)
+        {
+            throw new ArgumentException($"'text' is required for condition '{condition}'.");
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        string? lastText = null;
+        var satisfied = Retry.WhileFalse(
+            () =>
+            {
+                var element = Finder.TryFind(automationId, name, null, TimeSpan.FromMilliseconds(100));
+                if (element is null)
+                {
+                    return condition == "hidden";
+                }
+                lastText = UiTreeSerializer.TryGetValue(element) ?? element.Name;
+                return condition switch
+                {
+                    "enabled" => element.IsEnabled,
+                    "disabled" => !element.IsEnabled,
+                    "visible" => !element.IsOffscreen,
+                    "hidden" => element.IsOffscreen,
+                    "text_equals" => string.Equals(lastText, expectedText, StringComparison.OrdinalIgnoreCase),
+                    "text_contains" => lastText?.Contains(expectedText!, StringComparison.OrdinalIgnoreCase) == true,
+                    _ => throw new ArgumentException($"Unknown condition '{condition}'."),
+                };
+            },
+            timeout: TimeSpan.FromMilliseconds(timeoutMs),
+            interval: TimeSpan.FromMilliseconds(250),
+            throwOnTimeout: false,
+            ignoreException: false).Result;
+
+        return Json(new { satisfied, condition, elapsedMs = stopwatch.ElapsedMilliseconds, lastObservedText = lastText });
+    }
+
+    private string VerifyElementText(JsonElement args)
+    {
+        var (automationId, name, _) = GetCriteria(args);
+        var expectedText = GetString(args, "expectedText")
+            ?? throw new ArgumentException("expectedText is required.");
+        var comparison = GetString(args, "comparison") ?? "equals";
+
+        var element = Finder.Find(automationId, name, null);
+        var actualText = UiTreeSerializer.TryGetValue(element) ?? element.Name ?? string.Empty;
+        var passed = comparison == "contains"
+            ? actualText.Contains(expectedText, StringComparison.OrdinalIgnoreCase)
+            : string.Equals(actualText, expectedText, StringComparison.OrdinalIgnoreCase);
+
+        return Json(new { passed, expectedText, actualText, comparison });
+    }
+
+    private string ListWindows()
+    {
+        var active = _session.GetActiveWindow();
+        var windows = _session.GetAllWindows()
+            .Select(w => new
+            {
+                title = w.Title,
+                automationId = w.AutomationId,
+                isActive = w.Equals(active),
+            })
+            .ToArray();
+        return Json(new { success = true, windows });
+    }
+
+    private string SwitchToWindow(JsonElement args)
+    {
+        var title = GetString(args, "title")
+            ?? throw new ArgumentException("title is required.");
+        var window = _session.SwitchToWindow(title);
+        return Json(new { success = true, activeWindow = window.Title });
+    }
+
     private string GetElementState(JsonElement args)
     {
         var (automationId, name, _) = GetCriteria(args);
@@ -451,7 +652,7 @@ public sealed class AutomationToolExecutor(string defaultAppPath) : IToolExecuto
 
         using var image = fullScreen
             ? Capture.Screen()
-            : Capture.Element(_session.GetMainWindow());
+            : Capture.Element(_session.GetActiveWindow());
         image.ToFile(path);
 
         return Json(new { success = true, path });
@@ -468,6 +669,60 @@ public sealed class AutomationToolExecutor(string defaultAppPath) : IToolExecuto
 
     private static (string? AutomationId, string? Name, string? ControlType) GetCriteria(JsonElement args)
         => (GetString(args, "automationId"), GetString(args, "name"), GetString(args, "controlType"));
+
+    private static readonly Dictionary<string, VirtualKeyShort> KeyMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["CTRL"] = VirtualKeyShort.CONTROL,
+        ["CONTROL"] = VirtualKeyShort.CONTROL,
+        ["ALT"] = VirtualKeyShort.ALT,
+        ["SHIFT"] = VirtualKeyShort.SHIFT,
+        ["WIN"] = VirtualKeyShort.LWIN,
+        ["ENTER"] = VirtualKeyShort.ENTER,
+        ["RETURN"] = VirtualKeyShort.RETURN,
+        ["TAB"] = VirtualKeyShort.TAB,
+        ["ESC"] = VirtualKeyShort.ESCAPE,
+        ["ESCAPE"] = VirtualKeyShort.ESCAPE,
+        ["SPACE"] = VirtualKeyShort.SPACE,
+        ["BACKSPACE"] = VirtualKeyShort.BACK,
+        ["DELETE"] = VirtualKeyShort.DELETE,
+        ["DEL"] = VirtualKeyShort.DELETE,
+        ["INSERT"] = VirtualKeyShort.INSERT,
+        ["HOME"] = VirtualKeyShort.HOME,
+        ["END"] = VirtualKeyShort.END,
+        ["PAGEUP"] = VirtualKeyShort.PRIOR,
+        ["PAGEDOWN"] = VirtualKeyShort.NEXT,
+        ["UP"] = VirtualKeyShort.UP,
+        ["DOWN"] = VirtualKeyShort.DOWN,
+        ["LEFT"] = VirtualKeyShort.LEFT,
+        ["RIGHT"] = VirtualKeyShort.RIGHT,
+        ["F1"] = VirtualKeyShort.F1,
+        ["F2"] = VirtualKeyShort.F2,
+        ["F3"] = VirtualKeyShort.F3,
+        ["F4"] = VirtualKeyShort.F4,
+        ["F5"] = VirtualKeyShort.F5,
+        ["F6"] = VirtualKeyShort.F6,
+        ["F7"] = VirtualKeyShort.F7,
+        ["F8"] = VirtualKeyShort.F8,
+        ["F9"] = VirtualKeyShort.F9,
+        ["F10"] = VirtualKeyShort.F10,
+        ["F11"] = VirtualKeyShort.F11,
+        ["F12"] = VirtualKeyShort.F12,
+    };
+
+    private static VirtualKeyShort ParseKey(string token)
+    {
+        if (KeyMap.TryGetValue(token, out var key))
+        {
+            return key;
+        }
+        if (token.Length == 1 && char.IsLetterOrDigit(token[0]))
+        {
+            return Enum.Parse<VirtualKeyShort>($"KEY_{char.ToUpperInvariant(token[0])}");
+        }
+        throw new ArgumentException(
+            $"Unknown key '{token}'. Use modifiers CTRL/ALT/SHIFT/WIN, named keys like " +
+            "ENTER, TAB, ESCAPE, DELETE, F1-F12, arrow keys, or single letters/digits.");
+    }
 
     private static string GetCellText(GridCell cell)
         => UiTreeSerializer.TryGetValue(cell) ?? cell.Name ?? string.Empty;
