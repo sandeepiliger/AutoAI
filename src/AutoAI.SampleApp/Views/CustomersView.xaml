@@ -1,0 +1,45 @@
+<UserControl x:Class="AutoAI.SampleApp.Views.CustomersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Loaded="CustomersView_Loaded">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Customers" FontSize="20" FontWeight="Bold" Margin="0,0,0,8" />
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBox x:Name="CustomerSearchTextBox"
+                     AutomationProperties.AutomationId="CustomerSearchTextBox"
+                     Width="220" Height="28" />
+            <Button x:Name="CustomerSearchButton"
+                    AutomationProperties.AutomationId="CustomerSearchButton"
+                    Content="Search"
+                    Width="90" Height="28" Margin="8,0,0,0"
+                    Click="CustomerSearchButton_Click" />
+        </StackPanel>
+
+        <DataGrid Grid.Row="2"
+                  x:Name="CustomersGrid"
+                  AutomationProperties.AutomationId="CustomersGrid"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserAddRows="False"
+                  HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="60" />
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="200" />
+                <DataGridTextColumn Header="City" Binding="{Binding City}" Width="140" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <TextBlock Grid.Row="3"
+                   x:Name="CustomersCountText"
+                   AutomationProperties.AutomationId="CustomersCountText"
+                   Margin="0,8,0,0" />
+    </Grid>
+</UserControl>
