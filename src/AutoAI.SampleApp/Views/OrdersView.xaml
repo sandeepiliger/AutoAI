@@ -21,26 +21,68 @@
                     Content="Clear"
                     Width="80" Height="30" Margin="8,0,0,0"
                     Click="OrdersClearButton_Click" />
+            <Button x:Name="OrdersDeleteButton"
+                    AutomationProperties.AutomationId="OrdersDeleteButton"
+                    Content="Delete Selected"
+                    Width="110" Height="30" Margin="8,0,0,0"
+                    Click="OrdersDeleteButton_Click" />
+            <TextBlock Text="Status filter:" VerticalAlignment="Center" Margin="16,0,4,0" />
+            <ComboBox x:Name="OrdersFilterComboBox"
+                      AutomationProperties.AutomationId="OrdersFilterComboBox"
+                      Width="120" Height="28"
+                      SelectionChanged="OrdersFilterComboBox_SelectionChanged" />
             <TextBlock x:Name="OrdersStatusText"
                        AutomationProperties.AutomationId="OrdersStatusText"
                        Text="Not loaded"
                        VerticalAlignment="Center" Margin="16,0,0,0" />
         </StackPanel>
 
-        <!-- WPF DataGrid exposes UIA Grid/Table patterns natively; the read_grid tool relies on them. -->
-        <DataGrid Grid.Row="2"
-                  x:Name="OrdersGrid"
-                  AutomationProperties.AutomationId="OrdersGrid"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  CanUserAddRows="False"
-                  HeadersVisibility="Column">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Order Id" Binding="{Binding OrderId}" Width="100" />
-                <DataGridTextColumn Header="Customer" Binding="{Binding Customer}" Width="200" />
-                <DataGridTextColumn Header="Amount" Binding="{Binding Amount}" Width="100" />
-                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="120" />
-            </DataGrid.Columns>
-        </DataGrid>
+        <TabControl Grid.Row="2"
+                    x:Name="OrdersTabControl"
+                    AutomationProperties.AutomationId="OrdersTabControl">
+            <TabItem Header="All Orders" AutomationProperties.AutomationId="AllOrdersTab">
+                <!-- WPF DataGrid exposes UIA Grid/Table patterns natively; the read_grid tool relies on them. -->
+                <DataGrid x:Name="OrdersGrid"
+                          AutomationProperties.AutomationId="OrdersGrid"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          SelectionMode="Single"
+                          HeadersVisibility="Column"
+                          MouseDoubleClick="OrdersGrid_MouseDoubleClick">
+                    <DataGrid.ContextMenu>
+                        <ContextMenu AutomationProperties.AutomationId="OrdersContextMenu">
+                            <MenuItem Header="View Details"
+                                      AutomationProperties.AutomationId="OrdersContextViewDetailsMenuItem"
+                                      Click="OrdersContextViewDetails_Click" />
+                            <MenuItem Header="Export to CSV"
+                                      AutomationProperties.AutomationId="OrdersContextExportMenuItem"
+                                      Click="OrdersContextExport_Click" />
+                        </ContextMenu>
+                    </DataGrid.ContextMenu>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Order Id" Binding="{Binding OrderId}" Width="100" />
+                        <DataGridTextColumn Header="Customer" Binding="{Binding Customer}" Width="200" />
+                        <DataGridTextColumn Header="Amount" Binding="{Binding Amount}" Width="100" />
+                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="120" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+            <TabItem Header="Completed Orders" AutomationProperties.AutomationId="CompletedOrdersTab">
+                <DataGrid x:Name="CompletedOrdersGrid"
+                          AutomationProperties.AutomationId="CompletedOrdersGrid"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          HeadersVisibility="Column">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Order Id" Binding="{Binding OrderId}" Width="100" />
+                        <DataGridTextColumn Header="Customer" Binding="{Binding Customer}" Width="200" />
+                        <DataGridTextColumn Header="Amount" Binding="{Binding Amount}" Width="100" />
+                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="120" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </UserControl>

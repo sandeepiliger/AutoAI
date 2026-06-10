@@ -23,6 +23,29 @@ public sealed class UiTreeSerializer(int maxDepth = 12, int maxNodes = 400)
             ["windowTitle"] = window.Title,
             ["tree"] = BuildNode(window, depth: 0),
         };
+
+        // Open popups (context menus, dropdowns) are separate top-level windows.
+        var popup = Safe(() => window.Popup);
+        if (popup is not null)
+        {
+            root["popup"] = new JsonObject { ["tree"] = BuildNode(popup, depth: 0) };
+        }
+
+        // Modal dialogs (including message boxes) are separate top-level windows.
+        var modalWindows = new JsonArray();
+        foreach (var modal in Safe(() => window.ModalWindows) ?? [])
+        {
+            modalWindows.Add(new JsonObject
+            {
+                ["title"] = Safe(() => modal.Title),
+                ["tree"] = BuildNode(modal, depth: 0),
+            });
+        }
+        if (modalWindows.Count > 0)
+        {
+            root["modalWindows"] = modalWindows;
+        }
+
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = false });
     }
 
@@ -43,6 +66,13 @@ public sealed class UiTreeSerializer(int maxDepth = 12, int maxNodes = 400)
 
         var value = TryGetValue(element);
         if (!string.IsNullOrEmpty(value)) node["value"] = value;
+
+        var toggleState = TryGetToggleState(element);
+        if (toggleState is not null) node["checked"] = toggleState == ToggleState.On;
+        if (Safe(() => element.Patterns.SelectionItem.PatternOrDefault?.IsSelected?.ValueOrDefault) == true)
+        {
+            node["selected"] = true;
+        }
 
         var children = BuildChildren(element, depth + 1);
         if (children.Count > 0) node["children"] = children;
@@ -101,6 +131,16 @@ public sealed class UiTreeSerializer(int maxDepth = 12, int maxNodes = 400)
     internal static string? TryGetValue(AutomationElement element)
     {
         return Safe(() => element.Patterns.Value.PatternOrDefault?.Value?.ValueOrDefault);
+    }
+
+    internal static ToggleState? TryGetToggleState(AutomationElement element)
+    {
+        return Safe(() => element.Patterns.Toggle.PatternOrDefault?.ToggleState?.ValueOrDefault);
+    }
+
+    internal static double? TryGetRangeValue(AutomationElement element)
+    {
+        return Safe(() => element.Patterns.RangeValue.PatternOrDefault?.Value?.ValueOrDefault);
     }
 
     private static ControlType SafeControlType(AutomationElement element)

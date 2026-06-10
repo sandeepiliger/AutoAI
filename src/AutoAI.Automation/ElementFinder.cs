@@ -22,9 +22,20 @@ public sealed class ElementFinder(AutomationSession session)
     public AutomationElement? TryFind(string? automationId, string? name, string? controlType, TimeSpan timeout)
     {
         var condition = BuildCondition(automationId, name, controlType);
-        var window = session.GetMainWindow();
         return Retry.WhileNull(
-            () => window.FindFirstDescendant(condition),
+            () =>
+            {
+                // Modal dialogs are searched before the main window (see GetSearchRoots).
+                foreach (var root in session.GetSearchRoots())
+                {
+                    var found = root.FindFirstDescendant(condition);
+                    if (found is not null)
+                    {
+                        return found;
+                    }
+                }
+                return null;
+            },
             timeout: timeout,
             interval: RetryInterval,
             throwOnTimeout: false,

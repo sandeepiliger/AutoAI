@@ -36,10 +36,10 @@ in the chat.
 
 | Project | What it is |
 |---|---|
-| `src/AutoAI.SampleApp` | A small WPF app to test against: Home / Orders / Customers screens, buttons, text boxes and DataGrids. Orders loads 10 rows after a simulated 1.5 s delay. |
-| `src/AutoAI.Automation` | FlaUI wrapper exposing 12 automation tools (launch/attach, get_ui_tree, click_element, set_text, read_grid, verify_grid_row_count, wait_for_element, screenshot, …). |
+| `src/AutoAI.SampleApp` | An enterprise-style WPF app to test against: menu bar, status bar, five screens (Home, Orders, Customers, Order Entry, Reports), modal dialogs and message boxes, and the full common control set — see the coverage table below. Orders loads 10 rows after a simulated 1.5 s delay. |
+| `src/AutoAI.Automation` | FlaUI wrapper exposing 29 automation tools covering every common WPF control type, plus context menus, keyboard shortcuts, multi-window apps, state waits and text assertions — with modal-dialog- and popup-aware element search. |
 | `src/AutoAI.Agent` | Azure OpenAI client (API key + endpoint): system prompt, conversation history, tool definitions and the tool-call → execute → respond loop. |
-| `src/AutoAI.Copilot` | The WPF chat window you talk to. Shows agent replies and a live log of every tool call. |
+| `src/AutoAI.Copilot` | The WPF chat window you talk to — a modern dark Fluent-style UI (custom title bar, chat bubbles, live tool-call log, status indicator), hand-crafted styles with no extra UI dependencies. |
 
 ## Prerequisites
 
@@ -106,8 +106,45 @@ More things to try:
 
 - `Go to Home, type "Sandeep" in the name box, click Greet and verify the greeting says "Hello, Sandeep!"`
 - `Open Customers, search for "an" and tell me how many customers are shown.`
-- `Clear the orders grid and confirm the status text says "Not loaded".`
+- `On Order Entry: create an order for Alice Johnson, 3 Laptops, high priority, express shipping, 15% discount, and verify the confirmation message.`
+- `Load the orders, filter the grid to Shipped and verify it shows 6 rows.`
+- `Select the first order row, click Delete Selected, confirm the Yes/No dialog with Yes, and verify 9 orders remain.`
+- `In Reports, select Sales > Q1 Sales, enable detailed breakdown, generate the report and wait until it's ready.`
+- `Open Tools > Settings, switch the theme to Dark and save; verify the status bar confirms it.`
+- `Open Help > About and read me the dialog text, then close it.`
+- `Right-click the orders grid and choose Export to CSV; verify the status text confirms the export.`
+- `Select the second order row, double-click it, switch to the Order Details window, verify the customer name, then close it.`
+- `Wait until the Load Orders button is enabled again, then verify the status text contains "Loaded".`
 - `Take a screenshot of the app.`
+
+## WPF control coverage
+
+The sample app intentionally contains every control family an enterprise WPF system
+typically has, each wired to a matching automation tool:
+
+| Control | In the sample app | Agent tool |
+|---|---|---|
+| Button | everywhere | `click_element` |
+| TextBox (single/multiline) | Home, Order Entry | `set_text` |
+| PasswordBox | Settings dialog | `set_text` |
+| ComboBox | Orders filter, Order Entry, Settings | `select_combo_item` |
+| CheckBox / ToggleButton | Order Entry, Reports, Settings | `set_checkbox` |
+| RadioButton (GroupBox) | Order Entry priority | `select_radio_button` |
+| DatePicker | Order Entry delivery date | `set_text` (inner edit) |
+| Slider | Order Entry discount | `set_slider_value` |
+| DataGrid | Orders (2 grids), Customers | `read_grid`, `verify_grid_row_count`, `select_grid_row` |
+| TabControl / TabItem | Orders (All / Completed) | `select_tab` |
+| TreeView | Reports catalog | `select_tree_item` |
+| ListBox / ListView | Reports results | `select_list_item` |
+| Menu / MenuItem | File, View, Tools, Help | `select_menu_item` |
+| Expander | Reports options | `click_element` (ExpandCollapse) |
+| ProgressBar | Reports generation | `get_element_state` (rangeValue) |
+| StatusBar | main window | `get_element_state`, `verify_element_text` |
+| Modal Window / MessageBox | Settings, About, delete confirmation | found automatically by all tools; see `modalWindows` in `get_ui_tree` |
+| ContextMenu (right-click) | Orders grid (View Details, Export to CSV) | `right_click_element`, then `click_element`; menu appears under `popup` in `get_ui_tree` |
+| Non-modal child windows | Order Details (double-click a row) | `double_click_element`, `list_windows`, `switch_to_window` |
+| Keyboard shortcuts | everywhere | `send_keys` (`CTRL+S`, `ENTER`, `F5`, …) |
+| Async loads / state changes | Orders loading, report progress | `wait_for_element_state` (enabled/disabled/visible/hidden/text) |
 
 ## Pointing it at your own WPF application
 
@@ -122,11 +159,25 @@ More things to try:
 
 ## The automation tools the agent can call
 
-`launch_app`, `attach_app`, `close_app`, `get_ui_tree`, `click_element`, `set_text`,
-`select_tab`, `read_grid`, `verify_grid_row_count`, `get_element_state`,
-`wait_for_element`, `take_screenshot` — defined in
-`src/AutoAI.Automation/Tools/ToolCatalog.cs`. Add your own tool by appending a
-`ToolSpec` there and a handler in `AutomationToolExecutor.ExecuteCore`.
+**Apps & windows**: `launch_app`, `attach_app`, `close_app`, `list_windows`,
+`switch_to_window`
+**Discovery**: `get_ui_tree`, `get_element_state`, `take_screenshot`
+**Interaction**: `click_element`, `double_click_element`, `right_click_element`,
+`set_text`, `send_keys`, `focus_element`, `scroll_element`
+**Control-specific**: `select_combo_item`, `set_checkbox`, `select_radio_button`,
+`select_list_item`, `select_tree_item`, `select_menu_item`, `set_slider_value`,
+`select_tab`, `select_grid_row`
+**Synchronization**: `wait_for_element`, `wait_for_element_state`
+**Assertions**: `read_grid`, `verify_grid_row_count`, `verify_element_text`
+
+All defined in `src/AutoAI.Automation/Tools/ToolCatalog.cs`. Add your own tool by
+appending a `ToolSpec` there and a handler in `AutomationToolExecutor.ExecuteCore`.
+
+Element search automatically covers **open modal dialogs, message boxes and popups**
+(context menus, dropdowns) — they are separate top-level windows in UI Automation,
+searched before the active window — so the agent can fill dialogs, confirm message
+boxes and click context-menu items with the same tools. When the app opens non-modal
+child windows, `switch_to_window` retargets every tool at that window.
 
 ## Troubleshooting
 
