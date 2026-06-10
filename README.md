@@ -5,23 +5,24 @@ You type instructions like:
 
 > Go to the Orders screen, click Load Orders and verify the grid shows 10 rows.
 
-An **Azure AI Foundry agent** (your existing agent) decides which UI-automation tools to
-call, and a **FlaUI**-based executor performs them against the live application — clicking
-buttons, typing text, reading grids — then the agent reports PASSED/FAILED results back
-to you in the chat.
+An **Azure OpenAI model deployment** (from your Azure AI Foundry project, connected with
+just an **API key and endpoint**) decides which UI-automation tools to call, and a
+**FlaUI**-based executor performs them against the live application — clicking buttons,
+typing text, reading grids — then the agent reports PASSED/FAILED results back to you
+in the chat.
 
 ## Architecture
 
 ```
 ┌─────────────────────┐         ┌──────────────────────────┐
-│  AutoAI.Copilot     │  HTTPS  │  Azure AI Foundry         │
-│  (WPF chat window)  │◄───────►│  Agent Service            │
-│                     │         │  (your existing agent)    │
+│  AutoAI.Copilot     │  HTTPS  │  Azure OpenAI             │
+│  (WPF chat window)  │◄───────►│  (your model deployment,  │
+│                     │ api-key │   e.g. gpt-4o)            │
 │  ┌───────────────┐  │         └──────────────────────────┘
-│  │ FoundryAgent   │ │   The agent returns tool calls
-│  │ Session        │ │   (click_element, read_grid, ...);
+│  │ AzureOpenAI    │ │   The model returns tool calls
+│  │ AgentSession   │ │   (click_element, read_grid, ...);
 │  └──────┬────────┘  │   the Copilot executes them locally
-│         │           │   and submits the results back.
+│         │           │   and sends the results back.
 │  ┌──────▼────────┐  │
 │  │ AutoAI.        │ │   UI Automation (UIA3)
 │  │ Automation     │─┼────────────────────────┐
@@ -37,35 +38,30 @@ to you in the chat.
 |---|---|
 | `src/AutoAI.SampleApp` | A small WPF app to test against: Home / Orders / Customers screens, buttons, text boxes and DataGrids. Orders loads 10 rows after a simulated 1.5 s delay. |
 | `src/AutoAI.Automation` | FlaUI wrapper exposing 12 automation tools (launch/attach, get_ui_tree, click_element, set_text, read_grid, verify_grid_row_count, wait_for_element, screenshot, …). |
-| `src/AutoAI.Agent` | Azure AI Foundry client: persistent thread, per-run tool definitions, the RequiresAction → execute → SubmitToolOutputs loop. |
+| `src/AutoAI.Agent` | Azure OpenAI client (API key + endpoint): system prompt, conversation history, tool definitions and the tool-call → execute → respond loop. |
 | `src/AutoAI.Copilot` | The WPF chat window you talk to. Shows agent replies and a live log of every tool call. |
 
 ## Prerequisites
 
 - Windows 10/11 (WPF + UI Automation are Windows-only)
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (`az`)
-- An **Azure AI Foundry project with an existing agent** using a tool-capable model
-  (e.g. gpt-4o). You do **not** need to configure any tools on the agent — the Copilot
-  supplies the automation tool definitions with every run.
-- Your signed-in account needs the **Azure AI User** role on the Foundry project.
+- An **Azure OpenAI model deployment** with a tool-capable model (e.g. gpt-4o) — created
+  in the Azure AI Foundry portal or the Azure portal. No agent or tool configuration is
+  needed on the Azure side; the Copilot supplies everything with each request.
+- Its **endpoint and API key** — in the Azure portal under your Azure OpenAI resource →
+  **Keys and Endpoint**, or in the Foundry portal on the model deployment's details page.
+  No `az login`, tenant or role assignments required.
 
 ## Setup
 
-1. **Sign in to Azure** (the Copilot uses `DefaultAzureCredential`):
-
-   ```powershell
-   az login            # add --tenant <tenant-id> if you have several
-   ```
-
-2. **Configure the Copilot** — edit `src/AutoAI.Copilot/appsettings.json`:
+1. **Configure the Copilot** — edit `src/AutoAI.Copilot/appsettings.json`:
 
    ```json
    {
-     "Foundry": {
-       "ProjectEndpoint": "https://<your-resource>.services.ai.azure.com/api/projects/<your-project>",
-       "AgentId": "asst_xxxxxxxxxxxxxxxx",
-       "TenantId": null
+     "AzureOpenAI": {
+       "Endpoint": "https://<your-resource>.openai.azure.com/",
+       "ApiKey": "<your-azure-openai-api-key>",
+       "DeploymentName": "gpt-4o"
      },
      "SampleApp": {
        "Path": "..\\..\\..\\..\\AutoAI.SampleApp\\bin\\Debug\\net8.0-windows\\AutoAI.SampleApp.exe"
@@ -73,17 +69,17 @@ to you in the chat.
    }
    ```
 
-   Find the endpoint and agent id in the Azure AI Foundry portal under your project's
-   **Agents** page. You can also put local values in `appsettings.local.json`
+   `DeploymentName` is the name *you* gave the deployment, not the model name.
+   Tip: keep the key out of git by putting it in `appsettings.local.json`
    (git-ignored, loaded on top of `appsettings.json`).
 
-3. **Build everything**:
+2. **Build everything**:
 
    ```powershell
    dotnet build AutoAI.sln
    ```
 
-4. **Run the Copilot**:
+3. **Run the Copilot**:
 
    ```powershell
    dotnet run --project src/AutoAI.Copilot
@@ -136,15 +132,16 @@ More things to try:
 
 | Symptom | Fix |
 |---|---|
-| `401/403` on connect | `az login` again; ensure your account has the **Azure AI User** role on the Foundry project. Multi-tenant accounts: set `Foundry:TenantId`. |
-| `Agent ... was not found` | Check `Foundry:AgentId` and `Foundry:ProjectEndpoint` (must be the *project* endpoint, ending in `/api/projects/<name>`). |
+| `401/403` on connect | Wrong or expired API key — copy key 1 or 2 from **Keys and Endpoint** on your Azure OpenAI resource into `AzureOpenAI:ApiKey`. |
+| `Deployment ... was not found` | Check `AzureOpenAI:Endpoint` (must look like `https://<resource>.openai.azure.com/`) and `AzureOpenAI:DeploymentName` (the deployment name, not the model name). |
 | `Executable not found` on Launch App | Build the sample app first (`dotnet build`), or fix `SampleApp:Path`. |
 | Agent can't find elements | Make sure the right screen is visible; ask it to "get the UI tree" — and add `AutomationProperties.AutomationId` to your controls. |
-| Build errors in `FoundryAgentSession` | The `Azure.AI.Agents.Persistent` SDK is young and method names occasionally shift between versions. Pin to the version in `AutoAI.Agent.csproj` (1.1.0) or adjust the calls to your version. |
+| Model never calls tools | Use a tool-capable chat model (gpt-4o, gpt-4o-mini, gpt-4.1, …); completions-only or embedding deployments won't work. |
 
 ## Current limitations
 
-- Run status is polled (no streaming of partial agent text).
+- Replies are not streamed (the full answer appears when the turn finishes).
+- Conversation history grows over the session; restart the Copilot for a fresh context.
 - One application under test at a time.
 - Screenshots are saved to `%TEMP%\AutoAI` and returned as file paths; they are not
   sent to the model (use a vision-enabled flow if you need that).

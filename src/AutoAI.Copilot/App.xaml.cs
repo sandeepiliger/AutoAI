@@ -23,7 +23,7 @@ public partial class App : Application
         var options = configuration.Get<CopilotOptions>() ?? new CopilotOptions();
 
         _executor = new AutomationToolExecutor(options.SampleApp.Path);
-        var agentSession = new FoundryAgentSession(options.Foundry, _executor);
+        var agentSession = new AzureOpenAIAgentSession(options.AzureOpenAI, _executor);
         var viewModel = new ChatViewModel(agentSession, _executor);
 
         var window = new MainWindow { DataContext = viewModel };

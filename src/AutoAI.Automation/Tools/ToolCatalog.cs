@@ -4,7 +4,7 @@ namespace AutoAI.Automation.Tools;
 
 /// <summary>
 /// The tool definitions (names, descriptions, JSON parameter schemas) supplied to the
-/// Foundry agent on every run. Descriptions are written for the model, not for humans.
+/// model on every request. Descriptions are written for the model, not for humans.
 /// </summary>
 public static class ToolCatalog
 {

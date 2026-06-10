@@ -8,11 +8,11 @@ namespace AutoAI.Copilot.ViewModels;
 
 public sealed partial class ChatViewModel : ObservableObject
 {
-    private readonly FoundryAgentSession _agent;
+    private readonly AzureOpenAIAgentSession _agent;
     private readonly IToolExecutor _executor;
     private bool _connected;
 
-    public ChatViewModel(FoundryAgentSession agent, IToolExecutor executor)
+    public ChatViewModel(AzureOpenAIAgentSession agent, IToolExecutor executor)
     {
         _agent = agent;
         _executor = executor;

@@ -3,14 +3,14 @@ namespace AutoAI.Agent;
 public static class SystemPrompt
 {
     /// <summary>
-    /// Sent as additional instructions on every run, on top of whatever
-    /// instructions the agent already has in Azure AI Foundry.
+    /// The system prompt that turns the model deployment into a UI test agent.
+    /// Sent once at the start of the conversation.
     /// </summary>
-    public const string Addendum =
+    public const string Text =
         """
         You are a UI test automation copilot driving a Windows WPF application through the
-        automation tools provided with this run. The user gives test instructions in plain
-        language; you execute them with tool calls and report the results.
+        automation tools provided. The user gives test instructions in plain language; you
+        execute them with tool calls and report the results.
 
         Rules:
         1. If no application is attached yet, call launch_app first (it uses the configured path).
