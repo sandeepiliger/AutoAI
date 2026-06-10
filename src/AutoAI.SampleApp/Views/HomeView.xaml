@@ -1,0 +1,22 @@
+<UserControl x:Class="AutoAI.SampleApp.Views.HomeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="8">
+        <TextBlock x:Name="HomeWelcomeText"
+                   AutomationProperties.AutomationId="HomeWelcomeText"
+                   Text="Welcome to the AutoAI Sample App"
+                   FontSize="20" FontWeight="Bold" Margin="0,0,0,16" />
+        <TextBlock Text="Your name:" Margin="0,0,0,4" />
+        <TextBox x:Name="HomeUserNameTextBox"
+                 AutomationProperties.AutomationId="HomeUserNameTextBox"
+                 Width="240" HorizontalAlignment="Left" Height="28" />
+        <Button x:Name="HomeGreetButton"
+                AutomationProperties.AutomationId="HomeGreetButton"
+                Content="Greet"
+                Width="100" HorizontalAlignment="Left" Margin="0,8,0,0" Height="30"
+                Click="HomeGreetButton_Click" />
+        <TextBlock x:Name="HomeGreetingText"
+                   AutomationProperties.AutomationId="HomeGreetingText"
+                   FontSize="16" Margin="0,16,0,0" />
+    </StackPanel>
+</UserControl>
