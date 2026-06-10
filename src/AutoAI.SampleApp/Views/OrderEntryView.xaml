@@ -1,0 +1,88 @@
+<UserControl x:Class="AutoAI.SampleApp.Views.OrderEntryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="8" MaxWidth="520" HorizontalAlignment="Left">
+            <TextBlock Text="Order Entry" FontSize="20" FontWeight="Bold" Margin="0,0,0,12" />
+
+            <TextBlock Text="Customer:" Margin="0,0,0,4" />
+            <ComboBox x:Name="OrderEntryCustomerComboBox"
+                      AutomationProperties.AutomationId="OrderEntryCustomerComboBox"
+                      Width="260" Height="28" HorizontalAlignment="Left" />
+
+            <TextBlock Text="Product:" Margin="0,10,0,4" />
+            <ComboBox x:Name="OrderEntryProductComboBox"
+                      AutomationProperties.AutomationId="OrderEntryProductComboBox"
+                      Width="260" Height="28" HorizontalAlignment="Left" />
+
+            <TextBlock Text="Quantity:" Margin="0,10,0,4" />
+            <TextBox x:Name="OrderEntryQuantityTextBox"
+                     AutomationProperties.AutomationId="OrderEntryQuantityTextBox"
+                     Width="100" Height="28" HorizontalAlignment="Left" Text="1" />
+
+            <TextBlock Text="Delivery date:" Margin="0,10,0,4" />
+            <DatePicker x:Name="OrderEntryDatePicker"
+                        AutomationProperties.AutomationId="OrderEntryDatePicker"
+                        Width="160" HorizontalAlignment="Left" />
+
+            <GroupBox Header="Priority"
+                      AutomationProperties.AutomationId="OrderEntryPriorityGroup"
+                      Margin="0,12,0,0" Padding="8" HorizontalAlignment="Left" Width="260">
+                <StackPanel>
+                    <RadioButton x:Name="OrderEntryPriorityLowRadio"
+                                 AutomationProperties.AutomationId="OrderEntryPriorityLowRadio"
+                                 Content="Low" GroupName="Priority" Margin="0,2" />
+                    <RadioButton x:Name="OrderEntryPriorityNormalRadio"
+                                 AutomationProperties.AutomationId="OrderEntryPriorityNormalRadio"
+                                 Content="Normal" GroupName="Priority" IsChecked="True" Margin="0,2" />
+                    <RadioButton x:Name="OrderEntryPriorityHighRadio"
+                                 AutomationProperties.AutomationId="OrderEntryPriorityHighRadio"
+                                 Content="High" GroupName="Priority" Margin="0,2" />
+                </StackPanel>
+            </GroupBox>
+
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                <CheckBox x:Name="OrderEntryExpressCheckBox"
+                          AutomationProperties.AutomationId="OrderEntryExpressCheckBox"
+                          Content="Express shipping" />
+                <CheckBox x:Name="OrderEntryGiftWrapCheckBox"
+                          AutomationProperties.AutomationId="OrderEntryGiftWrapCheckBox"
+                          Content="Gift wrap" Margin="16,0,0,0" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                <TextBlock Text="Discount:" VerticalAlignment="Center" />
+                <Slider x:Name="OrderEntryDiscountSlider"
+                        AutomationProperties.AutomationId="OrderEntryDiscountSlider"
+                        Minimum="0" Maximum="50" TickFrequency="5" IsSnapToTickEnabled="True"
+                        Width="220" Margin="8,0,0,0" VerticalAlignment="Center"
+                        ValueChanged="OrderEntryDiscountSlider_ValueChanged" />
+                <TextBlock x:Name="OrderEntryDiscountText"
+                           AutomationProperties.AutomationId="OrderEntryDiscountText"
+                           Text="0%" Margin="8,0,0,0" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <TextBlock Text="Notes:" Margin="0,12,0,4" />
+            <TextBox x:Name="OrderEntryNotesTextBox"
+                     AutomationProperties.AutomationId="OrderEntryNotesTextBox"
+                     Width="420" Height="60" HorizontalAlignment="Left"
+                     AcceptsReturn="True" TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto" />
+
+            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                <Button x:Name="OrderEntrySubmitButton"
+                        AutomationProperties.AutomationId="OrderEntrySubmitButton"
+                        Content="Submit Order" Width="120" Height="30"
+                        Click="OrderEntrySubmitButton_Click" />
+                <Button x:Name="OrderEntryResetButton"
+                        AutomationProperties.AutomationId="OrderEntryResetButton"
+                        Content="Reset" Width="80" Height="30" Margin="8,0,0,0"
+                        Click="OrderEntryResetButton_Click" />
+            </StackPanel>
+
+            <TextBlock x:Name="OrderEntryStatusText"
+                       AutomationProperties.AutomationId="OrderEntryStatusText"
+                       Margin="0,12,0,8" TextWrapping="Wrap" FontWeight="SemiBold" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

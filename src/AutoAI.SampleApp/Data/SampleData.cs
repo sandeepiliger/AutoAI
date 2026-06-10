@@ -29,4 +29,10 @@ public static class SampleData
         new Customer(7, "Grace Chen",     "San Jose"),
         new Customer(8, "Henry Garcia",   "Miami"),
     };
+
+    public static IReadOnlyList<string> Products { get; } =
+        ["Laptop", "Monitor", "Keyboard", "Mouse", "Docking Station"];
+
+    public static IReadOnlyList<string> OrderStatuses { get; } =
+        ["All", "Shipped", "Pending", "Cancelled"];
 }

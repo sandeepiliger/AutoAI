@@ -3,16 +3,51 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="AutoAI Sample App"
         AutomationProperties.AutomationId="MainWindow"
-        Height="520" Width="820"
+        Height="640" Width="980"
         WindowStartupLocation="CenterScreen">
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="160" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+    <DockPanel>
+        <!-- Menu bar -->
+        <Menu DockPanel.Dock="Top" AutomationProperties.AutomationId="MainMenu">
+            <MenuItem Header="_File" AutomationProperties.AutomationId="FileMenu">
+                <MenuItem Header="_New Order" AutomationProperties.AutomationId="FileNewOrderMenuItem"
+                          Click="FileNewOrderMenuItem_Click" />
+                <Separator />
+                <MenuItem Header="E_xit" AutomationProperties.AutomationId="FileExitMenuItem"
+                          Click="FileExitMenuItem_Click" />
+            </MenuItem>
+            <MenuItem Header="_View" AutomationProperties.AutomationId="ViewMenu">
+                <MenuItem Header="_Home" AutomationProperties.AutomationId="ViewHomeMenuItem"
+                          Click="ViewHomeMenuItem_Click" />
+                <MenuItem Header="_Orders" AutomationProperties.AutomationId="ViewOrdersMenuItem"
+                          Click="ViewOrdersMenuItem_Click" />
+                <MenuItem Header="_Customers" AutomationProperties.AutomationId="ViewCustomersMenuItem"
+                          Click="ViewCustomersMenuItem_Click" />
+                <MenuItem Header="Order _Entry" AutomationProperties.AutomationId="ViewOrderEntryMenuItem"
+                          Click="ViewOrderEntryMenuItem_Click" />
+                <MenuItem Header="_Reports" AutomationProperties.AutomationId="ViewReportsMenuItem"
+                          Click="ViewReportsMenuItem_Click" />
+            </MenuItem>
+            <MenuItem Header="_Tools" AutomationProperties.AutomationId="ToolsMenu">
+                <MenuItem Header="_Settings..." AutomationProperties.AutomationId="ToolsSettingsMenuItem"
+                          Click="ToolsSettingsMenuItem_Click" />
+            </MenuItem>
+            <MenuItem Header="_Help" AutomationProperties.AutomationId="HelpMenu">
+                <MenuItem Header="_About" AutomationProperties.AutomationId="HelpAboutMenuItem"
+                          Click="HelpAboutMenuItem_Click" />
+            </MenuItem>
+        </Menu>
+
+        <!-- Status bar -->
+        <StatusBar DockPanel.Dock="Bottom" AutomationProperties.AutomationId="MainStatusBar">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusBarText"
+                           AutomationProperties.AutomationId="StatusBarText"
+                           Text="Ready - Home" />
+            </StatusBarItem>
+        </StatusBar>
 
         <!-- Navigation rail -->
-        <StackPanel Grid.Column="0" Background="#FF2D2D44">
+        <StackPanel DockPanel.Dock="Left" Width="160" Background="#FF2D2D44">
             <TextBlock Text="Sample App"
                        Foreground="White" FontSize="16" FontWeight="Bold"
                        Margin="12,16,12,12" />
@@ -31,12 +66,21 @@
                     Content="Customers"
                     Style="{StaticResource NavButtonStyle}"
                     Click="NavCustomersButton_Click" />
+            <Button x:Name="NavOrderEntryButton"
+                    AutomationProperties.AutomationId="NavOrderEntryButton"
+                    Content="Order Entry"
+                    Style="{StaticResource NavButtonStyle}"
+                    Click="NavOrderEntryButton_Click" />
+            <Button x:Name="NavReportsButton"
+                    AutomationProperties.AutomationId="NavReportsButton"
+                    Content="Reports"
+                    Style="{StaticResource NavButtonStyle}"
+                    Click="NavReportsButton_Click" />
         </StackPanel>
 
         <!-- Active screen -->
-        <ContentControl Grid.Column="1"
-                        x:Name="ContentHost"
+        <ContentControl x:Name="ContentHost"
                         AutomationProperties.AutomationId="ContentHost"
                         Margin="12" />
-    </Grid>
+    </DockPanel>
 </Window>

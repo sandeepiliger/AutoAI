@@ -3,7 +3,9 @@ using System.Text.Json;
 using AutoAI.Agent;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Capturing;
+using FlaUI.Core.Definitions;
 using FlaUI.Core.Input;
+using FlaUI.Core.WindowsAPI;
 
 namespace AutoAI.Automation.Tools;
 
@@ -54,6 +56,14 @@ public sealed class AutomationToolExecutor(string defaultAppPath) : IToolExecuto
             "select_tab" => SelectTab(args),
             "read_grid" => ReadGrid(args),
             "verify_grid_row_count" => VerifyGridRowCount(args),
+            "select_combo_item" => SelectComboItem(args),
+            "set_checkbox" => SetCheckBox(args),
+            "select_radio_button" => SelectRadioButton(args),
+            "select_list_item" => SelectListItem(args),
+            "select_tree_item" => SelectTreeItem(args),
+            "select_menu_item" => SelectMenuItem(args),
+            "set_slider_value" => SetSliderValue(args),
+            "select_grid_row" => SelectGridRow(args),
             "get_element_state" => GetElementState(args),
             "wait_for_element" => WaitForElement(args),
             "take_screenshot" => TakeScreenshot(args),
@@ -120,10 +130,30 @@ public sealed class AutomationToolExecutor(string defaultAppPath) : IToolExecuto
     private string ClickElement(JsonElement args)
     {
         var element = Find(args);
+        // Pattern preference: Invoke (buttons, menu items) -> Toggle (check boxes) ->
+        // ExpandCollapse (expanders) -> real mouse click for everything else.
         var invoke = element.Patterns.Invoke.PatternOrDefault;
+        var toggle = element.Patterns.Toggle.PatternOrDefault;
+        var expandCollapse = element.Patterns.ExpandCollapse.PatternOrDefault;
         if (invoke is not null)
         {
             invoke.Invoke();
+        }
+        else if (toggle is not null)
+        {
+            toggle.Toggle();
+        }
+        else if (expandCollapse is not null)
+        {
+            var state = expandCollapse.ExpandCollapseState.ValueOrDefault;
+            if (state == ExpandCollapseState.Collapsed)
+            {
+                expandCollapse.Expand();
+            }
+            else
+            {
+                expandCollapse.Collapse();
+            }
         }
         else
         {
@@ -151,11 +181,185 @@ public sealed class AutomationToolExecutor(string defaultAppPath) : IToolExecuto
         }
         catch
         {
-            // Fallback for controls without the Value pattern: type it.
-            element.Focus();
-            Keyboard.Type(text);
+            // Composite controls (e.g. DatePicker) hold their editable part in an inner
+            // Edit element; try that, then fall back to replacing the text via keyboard.
+            var innerEdit = element.FindFirstDescendant(
+                _session.Automation.ConditionFactory.ByControlType(ControlType.Edit));
+            if (innerEdit is not null)
+            {
+                innerEdit.AsTextBox().Enter(text);
+            }
+            else
+            {
+                element.Focus();
+                Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_A);
+                Keyboard.Type(text);
+            }
         }
+        Wait.UntilInputIsProcessed();
         return Json(new { success = true });
+    }
+
+    private string SelectComboItem(JsonElement args)
+    {
+        var automationId = GetString(args, "automationId")
+            ?? throw new ArgumentException("automationId is required.");
+        var item = GetString(args, "item")
+            ?? throw new ArgumentException("item is required.");
+
+        var comboBox = Finder.Find(automationId, null, null).AsComboBox();
+        comboBox.Expand();
+        var selected = comboBox.Items.FirstOrDefault(i =>
+            string.Equals(i.Text, item, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(i.Name, item, StringComparison.OrdinalIgnoreCase));
+        if (selected is null)
+        {
+            var available = comboBox.Items.Select(i => i.Text).ToArray();
+            comboBox.Collapse();
+            return Json(new { success = false, error = $"Item '{item}' not found.", availableItems = available });
+        }
+        selected.Select();
+        comboBox.Collapse();
+        Wait.UntilInputIsProcessed();
+        return Json(new { success = true, selectedItem = selected.Text });
+    }
+
+    private string SetCheckBox(JsonElement args)
+    {
+        var isChecked = GetBool(args, "checked")
+            ?? throw new ArgumentException("checked is required.");
+        var element = Find(args);
+        element.AsCheckBox().IsChecked = isChecked;
+        return Json(new { success = true, isChecked });
+    }
+
+    private string SelectRadioButton(JsonElement args)
+    {
+        var element = Find(args);
+        element.AsRadioButton().IsChecked = true;
+        return Json(new { success = true, selected = element.Name });
+    }
+
+    private string SelectListItem(JsonElement args)
+    {
+        var automationId = GetString(args, "automationId")
+            ?? throw new ArgumentException("automationId is required.");
+        var itemText = GetString(args, "item")
+            ?? throw new ArgumentException("item is required.");
+
+        var listBox = Finder.Find(automationId, null, null).AsListBox();
+        var item = listBox.Items.FirstOrDefault(i =>
+            string.Equals(i.Text, itemText, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(i.Name, itemText, StringComparison.OrdinalIgnoreCase));
+        if (item is null)
+        {
+            return Json(new
+            {
+                success = false,
+                error = $"List item '{itemText}' not found.",
+                availableItems = listBox.Items.Select(i => i.Text).ToArray(),
+            });
+        }
+        item.Select();
+        return Json(new { success = true, selectedItem = item.Text });
+    }
+
+    private string SelectTreeItem(JsonElement args)
+    {
+        var automationId = GetString(args, "automationId")
+            ?? throw new ArgumentException("automationId is required.");
+        var path = GetString(args, "path")
+            ?? throw new ArgumentException("path is required.");
+
+        var tree = Finder.Find(automationId, null, null).AsTree();
+        var parts = path.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var candidates = tree.Items;
+        TreeItem? current = null;
+        foreach (var part in parts)
+        {
+            current = candidates.FirstOrDefault(i =>
+                string.Equals(i.Name, part, StringComparison.OrdinalIgnoreCase));
+            if (current is null)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = $"Tree item '{part}' not found in path '{path}'.",
+                    availableItems = candidates.Select(i => i.Name).ToArray(),
+                });
+            }
+            current.Expand();
+            candidates = current.Items;
+        }
+        current!.Select();
+        return Json(new { success = true, selectedItem = current.Name, path });
+    }
+
+    private string SelectMenuItem(JsonElement args)
+    {
+        var path = GetString(args, "path")
+            ?? throw new ArgumentException("path is required.");
+
+        var window = _session.GetMainWindow();
+        var menuElement = window.FindFirstDescendant(
+            _session.Automation.ConditionFactory.ByControlType(ControlType.Menu))
+            ?? throw new ElementNotFoundException("controlType='Menu' (the window has no menu bar)");
+
+        var parts = path.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var candidates = menuElement.AsMenu().Items;
+        MenuItem? current = null;
+        foreach (var part in parts)
+        {
+            current = candidates.FirstOrDefault(i =>
+                string.Equals(i.Name, part, StringComparison.OrdinalIgnoreCase));
+            if (current is null)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = $"Menu item '{part}' not found in path '{path}'.",
+                    availableItems = candidates.Select(i => i.Name).ToArray(),
+                });
+            }
+            candidates = current.Items;
+        }
+        current!.Invoke();
+        Wait.UntilInputIsProcessed();
+        return Json(new { success = true, invoked = path });
+    }
+
+    private string SetSliderValue(JsonElement args)
+    {
+        var automationId = GetString(args, "automationId")
+            ?? throw new ArgumentException("automationId is required.");
+        var value = GetDouble(args, "value")
+            ?? throw new ArgumentException("value is required.");
+
+        var slider = Finder.Find(automationId, null, null).AsSlider();
+        slider.Value = value;
+        return Json(new { success = true, value = slider.Value });
+    }
+
+    private string SelectGridRow(JsonElement args)
+    {
+        var automationId = GetString(args, "automationId")
+            ?? throw new ArgumentException("automationId is required.");
+        var rowIndex = GetInt(args, "rowIndex")
+            ?? throw new ArgumentException("rowIndex is required.");
+
+        var grid = Finder.Find(automationId, null, null).AsGrid();
+        var rows = grid.Rows;
+        if (rowIndex < 0 || rowIndex >= rows.Length)
+        {
+            return Json(new
+            {
+                success = false,
+                error = $"rowIndex {rowIndex} is out of range (grid has {rows.Length} rows).",
+            });
+        }
+        var row = rows[rowIndex];
+        row.Select();
+        return Json(new { success = true, rowIndex, cells = row.Cells.Select(GetCellText).ToArray() });
     }
 
     private string SelectTab(JsonElement args)
@@ -211,6 +415,7 @@ public sealed class AutomationToolExecutor(string defaultAppPath) : IToolExecuto
             return Json(new { exists = false, criteria = ElementFinder.Describe(automationId, name, null) });
         }
 
+        var toggleState = UiTreeSerializer.TryGetToggleState(element);
         return Json(new
         {
             exists = true,
@@ -220,6 +425,8 @@ public sealed class AutomationToolExecutor(string defaultAppPath) : IToolExecuto
             isEnabled = element.IsEnabled,
             isOffscreen = element.IsOffscreen,
             text = UiTreeSerializer.TryGetValue(element),
+            isChecked = toggleState is null ? (bool?)null : toggleState == ToggleState.On,
+            rangeValue = UiTreeSerializer.TryGetRangeValue(element),
             boundingRectangle = element.BoundingRectangle.ToString(),
         });
     }
@@ -273,6 +480,16 @@ public sealed class AutomationToolExecutor(string defaultAppPath) : IToolExecuto
     private static int? GetInt(JsonElement args, string property)
         => args.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.Number
             ? value.GetInt32()
+            : null;
+
+    private static double? GetDouble(JsonElement args, string property)
+        => args.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.Number
+            ? value.GetDouble()
+            : null;
+
+    private static bool? GetBool(JsonElement args, string property)
+        => args.TryGetProperty(property, out var value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? value.GetBoolean()
             : null;
 
     private static string Json(object payload) => JsonSerializer.Serialize(payload);

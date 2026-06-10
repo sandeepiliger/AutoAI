@@ -38,7 +38,8 @@ public static class ToolCatalog
         new ToolSpec(
             "get_ui_tree",
             "Return the visible UI automation tree of the main window as JSON " +
-            "(controlType, automationId, name, value, children). Call this to discover " +
+            "(controlType, automationId, name, value, checked, selected, children). Open modal " +
+            "dialogs and message boxes are included under 'modalWindows'. Call this to discover " +
             "which elements exist and their automation IDs before interacting.",
             """
             {"type":"object","properties":{
@@ -48,9 +49,11 @@ public static class ToolCatalog
 
         new ToolSpec(
             "click_element",
-            "Click an element (button, nav item, etc.). Provide at least one of " +
-            "automationId, name or controlType. Uses the UIA Invoke pattern when available, " +
-            "otherwise a real mouse click.",
+            "Click an element (button, menu item, expander, nav item, dialog button, etc.). " +
+            "Provide at least one of automationId, name or controlType. Elements in open modal " +
+            "dialogs and message boxes are found too (e.g. name='Yes' on a confirmation box). " +
+            "Uses the UIA Invoke/Toggle/ExpandCollapse pattern when available, otherwise a real " +
+            "mouse click.",
             """
             {"type":"object","properties":{
               "automationId":{"type":"string","description":"AutomationId of the element (preferred)."},
@@ -123,6 +126,89 @@ public static class ToolCatalog
               "name":{"type":"string","description":"Visible name of the element."},
               "timeoutMs":{"type":"integer","description":"Maximum wait in milliseconds, default 5000."}
             },"required":[]}
+            """),
+
+        new ToolSpec(
+            "select_combo_item",
+            "Select an item in a ComboBox (dropdown) by its visible text.",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the ComboBox."},
+              "item":{"type":"string","description":"Visible text of the item to select."}
+            },"required":["automationId","item"]}
+            """),
+
+        new ToolSpec(
+            "set_checkbox",
+            "Check or uncheck a CheckBox or ToggleButton (UIA Toggle pattern).",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the check box (preferred)."},
+              "name":{"type":"string","description":"Visible label of the check box."},
+              "checked":{"type":"boolean","description":"true to check, false to uncheck."}
+            },"required":["checked"]}
+            """),
+
+        new ToolSpec(
+            "select_radio_button",
+            "Select a RadioButton.",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the radio button (preferred)."},
+              "name":{"type":"string","description":"Visible label of the radio button."}
+            },"required":[]}
+            """),
+
+        new ToolSpec(
+            "select_list_item",
+            "Select an item in a ListBox or ListView by its visible text.",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the list."},
+              "item":{"type":"string","description":"Visible text of the item to select."}
+            },"required":["automationId","item"]}
+            """),
+
+        new ToolSpec(
+            "select_tree_item",
+            "Expand a TreeView along a path of item names and select the final item. " +
+            "Example path: 'Sales/Q1 Sales'.",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the tree view."},
+              "path":{"type":"string","description":"Item names from root to target, separated by '/'."}
+            },"required":["automationId","path"]}
+            """),
+
+        new ToolSpec(
+            "select_menu_item",
+            "Open the window's menu bar and invoke a menu item along a path of menu names. " +
+            "Example path: 'File/New Order' or 'Tools/Settings...'.",
+            """
+            {"type":"object","properties":{
+              "path":{"type":"string","description":"Menu names from the top-level menu to the item, separated by '/'."}
+            },"required":["path"]}
+            """),
+
+        new ToolSpec(
+            "set_slider_value",
+            "Set the value of a Slider (UIA RangeValue pattern).",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the slider."},
+              "value":{"type":"number","description":"The value to set (clamped to the slider's range)."}
+            },"required":["automationId","value"]}
+            """),
+
+        new ToolSpec(
+            "select_grid_row",
+            "Select a row of a data grid by zero-based index (e.g. before clicking a " +
+            "'Delete Selected' style button). Returns the selected row's cell values.",
+            """
+            {"type":"object","properties":{
+              "automationId":{"type":"string","description":"AutomationId of the grid."},
+              "rowIndex":{"type":"integer","description":"Zero-based row index."}
+            },"required":["automationId","rowIndex"]}
             """),
 
         new ToolSpec(

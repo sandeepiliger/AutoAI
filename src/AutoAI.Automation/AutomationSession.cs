@@ -51,6 +51,27 @@ public sealed class AutomationSession : IDisposable
             "The application's main window did not appear within 10 seconds.");
     }
 
+    /// <summary>
+    /// Windows to search for elements, in interaction-priority order: open modal dialogs
+    /// (including message boxes) first — they're separate top-level windows, not
+    /// descendants of the main window — then the main window itself.
+    /// </summary>
+    public IReadOnlyList<Window> GetSearchRoots()
+    {
+        var mainWindow = GetMainWindow();
+        var roots = new List<Window>();
+        try
+        {
+            roots.AddRange(mainWindow.ModalWindows);
+        }
+        catch
+        {
+            // Modal window enumeration can fail transiently while a dialog opens/closes.
+        }
+        roots.Add(mainWindow);
+        return roots;
+    }
+
     public void CloseApp()
     {
         if (App is not null)
