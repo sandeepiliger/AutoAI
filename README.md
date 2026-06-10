@@ -39,7 +39,7 @@ in the chat.
 | `src/AutoAI.SampleApp` | An enterprise-style WPF app to test against: menu bar, status bar, five screens (Home, Orders, Customers, Order Entry, Reports), modal dialogs and message boxes, and the full common control set — see the coverage table below. Orders loads 10 rows after a simulated 1.5 s delay. |
 | `src/AutoAI.Automation` | FlaUI wrapper exposing 29 automation tools covering every common WPF control type, plus context menus, keyboard shortcuts, multi-window apps, state waits and text assertions — with modal-dialog- and popup-aware element search. |
 | `src/AutoAI.Agent` | Azure OpenAI client (API key + endpoint): system prompt, conversation history, tool definitions and the tool-call → execute → respond loop. |
-| `src/AutoAI.Copilot` | The WPF chat window you talk to. Shows agent replies and a live log of every tool call. |
+| `src/AutoAI.Copilot` | The WPF chat window you talk to — a modern dark Fluent-style UI (custom title bar, chat bubbles, live tool-call log, status indicator), hand-crafted styles with no extra UI dependencies. |
 
 ## Prerequisites
 
